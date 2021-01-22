@@ -92,9 +92,9 @@ func main() {
 }
 
 func requestHandler(c net.Conn) {
-	data := make([]byte, 1024)
 
 	for {
+		data := make([]byte, 1024)
 		_, err := c.Read(data)
 		if err != nil {
 			fmt.Println("Error reading request connection", err.Error())
