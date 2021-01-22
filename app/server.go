@@ -9,40 +9,62 @@ import (
 	sc "strconv"
 	st "strings"
 	"sync"
+	"time"
 )
 
+var MAX_TIME = time.Unix(1<<63-62135596801, 999999999)
+
+type CacheElem struct {
+	ExpiresAt time.Time
+	Value     string
+}
+
 type Cache struct {
-	data  map[string]string
-	mutex *sync.Mutex
+	data map[string]CacheElem
 }
 
 var cache *Cache
+var mutex = &sync.Mutex{}
 
 func GetCacheInstance() *Cache {
 	if cache == nil {
 		cache = &Cache{
-			data:  make(map[string]string),
-			mutex: &sync.Mutex{},
+			data: make(map[string]CacheElem),
 		}
 	}
 	return cache
 }
 
-func (c *Cache) Set(key string, value string) bool {
-	c.mutex.Lock()
-	c.data[key] = value
-	c.mutex.Unlock()
+func (c *Cache) Set(key string, value string, px *string) bool {
+	elem := CacheElem{
+		ExpiresAt: MAX_TIME,
+		Value:     value,
+	}
+	if px != nil {
+		dur, _ := time.ParseDuration(*px + "ms")
+		elem = CacheElem{
+			ExpiresAt: time.Now().Add(dur),
+			Value:     value,
+		}
+	}
+
+	mutex.Lock()
+	c.data[key] = elem
+	mutex.Unlock()
 	return true
 }
 
-func (c *Cache) Get(key string) (string, error) {
-	c.mutex.Lock()
+func (c *Cache) Get(key string) (*string, error) {
+	mutex.Lock()
 	val, exists := c.data[key]
-	c.mutex.Unlock()
+	mutex.Unlock()
 	if !exists {
-		return "", errors.New(fmt.Sprintf("No value for key %s", key))
+		return nil, errors.New(fmt.Sprintf("No Value for key %s", key))
 	}
-	return val, nil
+	if time.Now().After(val.ExpiresAt) {
+		return nil, nil
+	}
+	return &val.Value, nil
 }
 
 func main() {
@@ -125,8 +147,18 @@ func generateResponse(data []byte) ([]byte, error) {
 			if st.ToUpper(elemStr) == "SET" {
 				key, _ := elem.Next().Value.(string)
 				value, _ := elem.Next().Next().Value.(string)
+				var px *string
+				if l.Len() >= 5 {
+					addArg, _ := elem.Next().Next().Next().Value.(string)
+					if st.ToUpper(addArg) != "PX" {
+						fmt.Printf("Only PK is supported, %s\n", addArg)
+						return nil, errors.New("Not a px")
+					}
+					rawPx, _ := elem.Next().Next().Next().Next().Value.(string)
+					px = &rawPx
+				}
 				c := GetCacheInstance()
-				result := c.Set(key, value)
+				result := c.Set(key, value, px)
 				if result {
 					resp = []byte(formatRESPString("OK"))
 				} else {
@@ -141,7 +173,7 @@ func generateResponse(data []byte) ([]byte, error) {
 					fmt.Printf("Failed getting key of %s\n", key)
 					resp = []byte(formatBulkString(nil))
 				} else {
-					resp = []byte(formatBulkString(&result))
+					resp = []byte(formatBulkString(result))
 				}
 			}
 		}
@@ -180,15 +212,15 @@ func parseRESPString(str string) (*string, error) {
 	return &splited[0], nil
 }
 
-func parseRESPInt(str string) (*int, error) {
+func parseRESPInt(str string) (*string, error) {
 	splited := st.Split(str, "\r\n")
-	num, err := sc.Atoi(splited[0])
-	if err != nil {
-		fmt.Printf("Parsing number failed %s\n", str)
-		return nil, errors.New("Int - wrong format")
-	}
+	// num, err := sc.Atoi(splited[0])
+	// if err != nil {
+	// 	fmt.Printf("Parsing number failed %s\n", str)
+	// 	return nil, errors.New("Int - wrong format")
+	// }
 
-	return &num, nil
+	return &splited[0], nil
 }
 
 func parseRESPBulkStr(str string) (*string, error) {
@@ -213,7 +245,7 @@ func parseRESPArr(str string) (*list.List, error) {
 
 	n, err := sc.Atoi(str[:1])
 	if err != nil {
-		fmt.Println("Arr parse failed - not a number first value", err.Error())
+		fmt.Println("Arr parse failed - not a number first Value", err.Error())
 		return nil, err
 	}
 
