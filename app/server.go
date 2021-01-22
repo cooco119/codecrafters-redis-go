@@ -43,7 +43,7 @@ func requestHandler(c net.Conn) {
 			fmt.Println("Error reading request connection", err.Error())
 			return
 		}
-		fmt.Printf("Got raw command of %s\n", string(data))
+		// fmt.Printf("Got raw command of %s\n", string(data))
 		resp, err := generateResponse(data)
 		if err != nil {
 			fmt.Println("Failed to generate response", err.Error())
@@ -69,7 +69,7 @@ func generateResponse(data []byte) ([]byte, error) {
 	switch req.(type) {
 	case *string:
 		reqStr, _ := req.(*string)
-		if *reqStr == "PING" {
+		if st.ToUpper(*reqStr) == "PING" {
 			pong := formatRESPString("PONG")
 			resp = []byte(pong)
 		}
@@ -77,10 +77,15 @@ func generateResponse(data []byte) ([]byte, error) {
 		l, ok := req.(*list.List)
 		if ok {
 			elem := l.Front()
-			if elem.Value == "ECHO" {
+			elemStr, _ := elem.Value.(string)
+			if st.ToUpper(elemStr) == "ECHO" {
 				arg, _ := elem.Next().Value.(string)
 				echo := formatRESPString(arg)
 				resp = []byte(echo)
+			}
+			if st.ToUpper(elemStr) == "PING" {
+				pong := formatRESPString("PONG")
+				resp = []byte(pong)
 			}
 		}
 	default:

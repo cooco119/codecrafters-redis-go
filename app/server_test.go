@@ -36,7 +36,7 @@ func TestParse_should_parse_bulk_str_arr(t *testing.T) {
 }
 
 func TestGenerateResponse_should_return_pong_for_ping(t *testing.T) {
-	data := "+PING\r\n"
+	data := "*1\r\n$4\r\nping\r\n"
 	res, err := generateResponse([]byte(data))
 	if err != nil {
 		t.Errorf("Failed to generate, %+v", err)
