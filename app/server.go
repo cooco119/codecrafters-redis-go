@@ -8,7 +8,42 @@ import (
 	"os"
 	sc "strconv"
 	st "strings"
+	"sync"
 )
+
+type Cache struct {
+	data  map[string]string
+	mutex *sync.Mutex
+}
+
+var cache *Cache
+
+func GetCacheInstance() *Cache {
+	if cache == nil {
+		cache = &Cache{
+			data:  make(map[string]string),
+			mutex: &sync.Mutex{},
+		}
+	}
+	return cache
+}
+
+func (c *Cache) Set(key string, value string) bool {
+	c.mutex.Lock()
+	c.data[key] = value
+	c.mutex.Unlock()
+	return true
+}
+
+func (c *Cache) Get(key string) (string, error) {
+	c.mutex.Lock()
+	val, exists := c.data[key]
+	c.mutex.Unlock()
+	if !exists {
+		return "", errors.New(fmt.Sprintf("No value for key %s", key))
+	}
+	return val, nil
+}
 
 func main() {
 	// Uncomment this block to pass the first stage
@@ -86,6 +121,28 @@ func generateResponse(data []byte) ([]byte, error) {
 			if st.ToUpper(elemStr) == "PING" {
 				pong := formatRESPString("PONG")
 				resp = []byte(pong)
+			}
+			if st.ToUpper(elemStr) == "SET" {
+				key, _ := elem.Next().Value.(string)
+				value, _ := elem.Next().Next().Value.(string)
+				c := GetCacheInstance()
+				result := c.Set(key, value)
+				if result {
+					resp = []byte(formatRESPString("OK"))
+				} else {
+					resp = []byte(formatRESPString("FAILED"))
+				}
+			}
+			if st.ToUpper(elemStr) == "GET" {
+				key, _ := elem.Next().Value.(string)
+				c := GetCacheInstance()
+				result, err := c.Get(key)
+				if err != nil {
+					fmt.Printf("Failed getting key of %s\n", key)
+					resp = []byte(formatRESPString("ERROR"))
+				} else {
+					resp = []byte(formatBulkString(result))
+				}
 			}
 		}
 	default:
@@ -193,4 +250,9 @@ func parseRESPArr(str string) (*list.List, error) {
 
 func formatRESPString(str string) string {
 	return fmt.Sprintf("+%s\r\n", str)
+}
+
+func formatBulkString(str string) string {
+	n := len(str)
+	return fmt.Sprintf("$%d\r\n%s\r\n", n, str)
 }

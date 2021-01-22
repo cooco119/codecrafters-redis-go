@@ -60,3 +60,40 @@ func TestGenerateResponse_should_return_echo(t *testing.T) {
 		t.Errorf("Wrong response")
 	}
 }
+
+func TestSet_should_return_ok(t *testing.T) {
+	data := "*3\r\n$3\r\nSET\r\n$5\r\nhello\r\n$5\r\nworld\r\n"
+	res, err := generateResponse([]byte(data))
+	if err != nil {
+		t.Errorf("Failed to set %+v", err)
+	}
+
+	strRes := string(res)
+	if strRes != "+OK\r\n" {
+		t.Errorf("Wrong response")
+	}
+}
+
+func TestGet_should_return_ok(t *testing.T) {
+	data := "*3\r\n$3\r\nSET\r\n$5\r\nhello\r\n$5\r\nworld\r\n"
+	res, err := generateResponse([]byte(data))
+	if err != nil {
+		t.Errorf("Failed to set %+v", err)
+	}
+
+	strRes := string(res)
+	if strRes != "+OK\r\n" {
+		t.Errorf("Wrong response for set")
+	}
+
+	data = "*2\r\n$3\r\nGET\r\n$5\r\nhello\r\n"
+	res, err = generateResponse([]byte(data))
+	if err != nil {
+		t.Errorf("Failed to get %+v", err)
+	}
+
+	strRes = string(res)
+	if strRes != "$5\r\nworld\r\n" {
+		t.Errorf("Wrong response for get")
+	}
+}
