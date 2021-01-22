@@ -16,13 +16,15 @@ func main() {
 	}
 	defer l.Close()
 
-	conn, err := l.Accept()
-	if err != nil {
-		fmt.Println("Error accepting connection: ", err.Error())
-		os.Exit(1)
-	}
+	for {
+		conn, err := l.Accept()
+		if err != nil {
+			fmt.Println("Error accepting connection: ", err.Error())
+			os.Exit(1)
+		}
 
-	requestHandler(conn)
+		requestHandler(conn)
+	}
 }
 
 func requestHandler(c net.Conn) {
