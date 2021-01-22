@@ -22,9 +22,11 @@ func main() {
 			fmt.Println("Error accepting connection: ", err.Error())
 			continue
 		}
-		defer conn.Close()
 
-		go requestHandler(conn)
+		go func() {
+			requestHandler(conn)
+			defer conn.Close()
+		}()
 	}
 }
 
