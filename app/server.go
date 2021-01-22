@@ -22,28 +22,28 @@ func main() {
 			fmt.Println("Error accepting connection: ", err.Error())
 			continue
 		}
-		go func() {
-			requestHandler(conn)
-			defer conn.Close()
-		}()
+		defer conn.Close()
 
+		go requestHandler(conn)
 	}
 }
 
 func requestHandler(c net.Conn) {
 	data := make([]byte, 1024)
 
-	_, err := c.Read(data)
-	if err != nil {
-		fmt.Println("Error reading request connection", err.Error())
-		return
-	}
+	for {
+		_, err := c.Read(data)
+		if err != nil {
+			fmt.Println("Error reading request connection", err.Error())
+			return
+		}
 
-	pong := formatRESPString("PONG")
-	_, err = c.Write([]byte(pong))
-	if err != nil {
-		fmt.Println("Error writing respnose", err.Error())
-		return
+		pong := formatRESPString("PONG")
+		_, err = c.Write([]byte(pong))
+		if err != nil {
+			fmt.Println("Error writing respnose", err.Error())
+			return
+		}
 	}
 }
 
