@@ -78,7 +78,7 @@ func requestHandler(c net.Conn) {
 			fmt.Println("Error reading request connection", err.Error())
 			return
 		}
-		fmt.Printf("Got raw command of %s\n", string(data))
+		fmt.Printf("Got raw command of %s\n", st.Join(st.Split(string(data), "\r\n"), " "))
 		resp, err := generateResponse(data)
 		if err != nil {
 			fmt.Println("Failed to generate response", err.Error())
