@@ -139,9 +139,9 @@ func generateResponse(data []byte) ([]byte, error) {
 				result, err := c.Get(key)
 				if err != nil {
 					fmt.Printf("Failed getting key of %s\n", key)
-					resp = []byte(formatRESPString("ERROR"))
+					resp = []byte(formatBulkString(nil))
 				} else {
-					resp = []byte(formatBulkString(result))
+					resp = []byte(formatBulkString(&result))
 				}
 			}
 		}
@@ -242,7 +242,7 @@ func parseRESPArr(str string) (*list.List, error) {
 
 	if result.Len() != n {
 		fmt.Printf("Result list length doesn't match with given length %d, %+v\n", n, result)
-		return nil, errors.New("Length error")
+		// return nil, errors.New("Length error")
 	}
 
 	return result, nil
@@ -252,7 +252,10 @@ func formatRESPString(str string) string {
 	return fmt.Sprintf("+%s\r\n", str)
 }
 
-func formatBulkString(str string) string {
-	n := len(str)
-	return fmt.Sprintf("$%d\r\n%s\r\n", n, str)
+func formatBulkString(str *string) string {
+	if str != nil {
+		n := len(*str)
+		return fmt.Sprintf("$%d\r\n%s\r\n", n, *str)
+	}
+	return "$-1\r\n"
 }

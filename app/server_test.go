@@ -97,3 +97,16 @@ func TestGet_should_return_ok(t *testing.T) {
 		t.Errorf("Wrong response for get")
 	}
 }
+
+func TestGet_should_return_nil_for_no_key(t *testing.T) {
+	data := "*2\r\n$3\r\nGET\r\n$5\r\nhello\r\n"
+	res, err := generateResponse([]byte(data))
+	if err != nil {
+		t.Errorf("Failed to get %+v", err)
+	}
+
+	strRes := string(res)
+	if strRes != "$-1\r\n" {
+		t.Errorf("Wrong response for get")
+	}
+}
